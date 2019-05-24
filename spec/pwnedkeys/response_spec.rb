@@ -204,8 +204,34 @@ describe Pwnedkeys::Response do
       end
     end
 
-    context "for a Koblitz curve key" do
+    context "for a SECG Koblitz curve 256 bit key" do
       let(:key) { OpenSSL::PKey::EC.new("secp256k1").generate_key }
+
+      include_examples :valid_response
+
+      context "the protected header" do
+        let(:header) { JSON.parse(Base64.urlsafe_decode64(jws["protected"])) }
+
+        it "specifies the right alg" do
+          expect(header["alg"]).to eq("ES256K")
+        end
+
+        it "has the right key ID" do
+          expect(header["kid"]).to eq(key.to_spki.spki_fingerprint.hexdigest)
+        end
+      end
+
+      context "the signature" do
+        let(:sig) { ec_sig(Base64.urlsafe_decode64(JSON.parse(res.to_json)["signature"])) }
+
+        it "validates" do
+          expect(key.verify(OpenSSL::Digest::SHA256.new, sig, "#{jws["protected"]}.#{jws["payload"]}")).to be(true)
+        end
+      end
+    end
+
+    context "for an unsupported curve key" do
+      let(:key) { OpenSSL::PKey::EC.new("wap-wsg-idm-ecid-wtls6").generate_key }
 
       it "raises an error" do
         expect { res.to_json }.to raise_error(Pwnedkeys::Response::Error)

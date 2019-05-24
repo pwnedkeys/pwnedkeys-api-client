@@ -112,6 +112,11 @@ module Pwnedkeys
       }
       when OpenSSL::PKey::EC
         case @key.public_key.group.curve_name
+        when "secp256k1" then {
+          key_alg: "ES256K",
+          hash_func: OpenSSL::Digest::SHA256,
+          format_sig: ->(sig) { jose_sig(sig, 32) },
+        }
         when "prime256v1" then {
           key_alg: "ES256",
           hash_func: OpenSSL::Digest::SHA256,

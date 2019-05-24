@@ -27,8 +27,8 @@ describe Pwnedkeys::Request do
       expect { described_class.new(:fortytwo) }.to raise_error(Pwnedkeys::Request::Error)
     end
 
-    context "with a Koblitz curve key" do
-      let(:key) { OpenSSL::PKey::EC.new("secp256k1").generate_key }
+    context "with an unsupported curve key" do
+      let(:key) { OpenSSL::PKey::EC.new("wap-wsg-idm-ecid-wtls6").generate_key }
 
       it "raises an error" do
         expect{ described_class.new(key.to_spki) }.to raise_error(Pwnedkeys::Request::Error)
@@ -171,6 +171,14 @@ describe Pwnedkeys::Request do
 
       context "with a P-521 key" do
         let(:key) { OpenSSL::PKey::EC.new("secp521r1").generate_key }
+
+        it "validates successfully" do
+          expect(req.pwned?).to be(true)
+        end
+      end
+
+      context "with a SECG Koblitz 256 bit key" do
+        let(:key) { OpenSSL::PKey::EC.new("secp256k1").generate_key }
 
         it "validates successfully" do
           expect(req.pwned?).to be(true)
