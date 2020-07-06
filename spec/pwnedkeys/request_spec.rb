@@ -204,5 +204,57 @@ describe Pwnedkeys::Request do
         expect { req.pwned? }.to raise_error(Pwnedkeys::Request::Error)
       end
     end
+
+    context "with a filter defined" do
+      let(:filter_file) { File.expand_path("../../fixtures/filter.pkbf", __FILE__) }
+      let(:req) { Pwnedkeys::Request.new(spki, filter: filter_file) }
+      let(:response_code) { "404" }
+
+      let(:included_key) do
+        OpenSSL::PKey.read <<~EOF.unpack("m").first
+          MIIBPAIBAAJBAMXBUC1SALNO3nIX8l7bn+SIUpTQwZNs3vYuFPUrClrtVF400e9v4MazsDLf
+          GfTPgTxpKvz0ovJ+5pDodKDes5sCAwEAAQJBAIwgslaa3+IvBdMlAtqSl9dRferzjeeQYuFg
+          v/sGF51bheGzDIfYQP+W8JatHXpe51glWLH7OPyqHw9vrVCPCqkCIQDj+KuATcxubMH/N2jC
+          eSTnxRlxcZ/jmjHgy+pMEa0sLwIhAN4RmKdXjkM5lHYMkcyXGb2g5Q0aQcMfJqw/R8qtp3hV
+          AiAETYxHJrDGIM1kmNIkYY79xO2fA4sGC8IHQTIR7396RwIhAMZslKlaK6zXw1cj7hcQIJj3
+          LhNiFcbCi+y28nAgcJatAiEAnSWQvDPCeQhxKlhihWj6BgXhbaGcAH+r1KdGf/L/zWo=
+        EOF
+      end
+
+      let(:not_included_key) do
+        OpenSSL::PKey.read <<~EOF.unpack("m").first
+          MIIBOQIBAAJBANBdbS2W+xYLUV7IINfdRYV4ll5SOIglukj0I9RwpZaRUQGKM9o0E2+QBQM9
+          OjWQ6+uIzlDZkT+wTaFA678v0psCAwEAAQJAGWcqhmJf3kIm+30+s9KgRTN8cadoiQDAg2Bw
+          ddf9+Csq8+0SsH1JUY10udP67OuJDh9kJP6B5Ax67a6DWnCrgQIhAO3tTZqbkbg9ksH8EBcW
+          oAw9KQE5XoX+SidvNeTI+LchAiEA4DFDoLElZ/wCULM1cYar/QpxaiPDXK72z43S3CAv3jsC
+          IGm3x4OrHFSBB3SqS3v20aaehlnE4/slwk1DXO8LXXgBAiBztrmzHPuzmg0P3g99kwb+Sf+T
+          yvWwxtW49viYiTxrtQIgGED64JUFf8WREjgMEnZLghw2idFMhItumExPq+iGUdY=
+        EOF
+      end
+
+      context "on a key in the filter" do
+        let(:key) { included_key }
+
+        it "checks the API" do
+          expect(mock_http).to receive(:request)
+
+			 req.pwned?
+        end
+      end
+
+      context "with a key not in the filter" do
+        let(:key) { not_included_key }
+
+        it "reports the key as not pwned" do
+          expect(req.pwned?).to be(false)
+        end
+
+        it "does not check the API" do
+          expect(Net::HTTP).to_not receive(:start)
+
+          req.pwned?
+        end
+      end
+    end
   end
 end

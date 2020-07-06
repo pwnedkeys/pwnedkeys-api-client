@@ -23,6 +23,7 @@ Gem::Specification.new do |s|
   s.required_ruby_version = ">= 2.5.0"
 
   s.add_runtime_dependency "openssl-additions"
+  s.add_runtime_dependency "pwnedkeys-filter"
 
   s.add_development_dependency 'bundler'
   s.add_development_dependency 'github-release'

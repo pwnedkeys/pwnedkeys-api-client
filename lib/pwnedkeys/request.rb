@@ -2,8 +2,8 @@ require "base64"
 require "json"
 require "net/http"
 require "openssl"
-
 require "openssl/x509/spki"
+require "pwnedkeys/filter"
 
 # All the keys that are fit to be pwned.
 module Pwnedkeys
@@ -30,11 +30,16 @@ module Pwnedkeys
     #   ASN.1 structure.
     #
     #   If in doubt, just pass in a key and we'll take care of the rest.
+	 #
+	 # @param filter [#to_s] specify the location of a Pwnedkeys bloom filter.
+	 #   For more information on the format of a bloom filter file, see
+	 #   https://pwnedkeys.com/filter.html.
     #
     # @raise [Pwnedkeys::Request::Error] if the passed-in key representation
     #   can't be induced into something useable.
     #
-    def initialize(spki)
+    def initialize(spki, filter: nil)
+      @filter = filter
       @spki = if spki.is_a?(OpenSSL::X509::SPKI)
         spki
       elsif spki.is_a?(String)
@@ -67,6 +72,11 @@ module Pwnedkeys
     #   completed.
     #
     def pwned?
+      if @filter && !included_in_filter?
+        # Can't be pwned, the filter says so
+        return false
+      end
+
       retry_count = 10
       uri = URI(ENV["PWNEDKEYS_API_URL"] || "https://v1.pwnedkeys.com")
       uri.path += "/#{@spki.spki_fingerprint.hexdigest}"
@@ -202,6 +212,12 @@ module Pwnedkeys
         end
       else
         raise Error, "Unsupported key type #{@key.class}"
+      end
+    end
+
+    def included_in_filter?
+      Pwnedkeys::Filter.open(@filter) do |f|
+        f.probably_includes?(@spki)
       end
     end
   end
